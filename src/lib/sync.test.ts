@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { newWord } from './srs'
 import {
   applyConflictResolutions,
+  markPayloadSynced,
   mergePayloads,
   mergeWords,
   sanitizePayloadForGist,
@@ -146,7 +147,26 @@ describe('mergePayloads', () => {
         done: [],
         startedAt: 1,
       },
-      lastSyncAt: 200,
+      lastSyncAt: 5,
     })
+  })
+})
+
+describe('markPayloadSynced', () => {
+  it('updates lastSyncAt only after a successful push', () => {
+    const payload: BackupPayload = {
+      version: 1,
+      exportedAt: 100,
+      words: [W('a', 10)],
+      settings: {
+        dailyNewCount: 20,
+        githubPat: 'secret',
+        githubGistId: 'gist-1',
+        lastSyncAt: 5,
+      },
+    }
+
+    expect(markPayloadSynced(payload, 200).settings.lastSyncAt).toBe(200)
+    expect(payload.settings.lastSyncAt).toBe(5)
   })
 })

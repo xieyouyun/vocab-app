@@ -181,8 +181,18 @@ export function mergePayloads(
       version: 1,
       exportedAt: now,
       words: merged,
-      settings: mergeSettings(local.settings, remote.settings, now),
+      settings: mergeSettings(local.settings, remote.settings, local.settings.lastSyncAt ?? 0),
     },
     conflicts,
+  }
+}
+
+export function markPayloadSynced(payload: BackupPayload, syncedAt: number): BackupPayload {
+  return {
+    ...payload,
+    settings: {
+      ...payload.settings,
+      lastSyncAt: syncedAt,
+    },
   }
 }

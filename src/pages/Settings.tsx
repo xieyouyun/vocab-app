@@ -5,6 +5,7 @@ import {
   applyConflictResolutions,
   createGist,
   fetchGist,
+  markPayloadSynced,
   mergePayloads,
   pushGist,
   type Conflict,
@@ -83,19 +84,20 @@ export default function Settings() {
     payload: Awaited<ReturnType<typeof exportAll>>,
     patValue: string,
     gistId: string,
+    syncedAt: number,
     successMessage: string,
   ) => {
-    const next = {
+    const next = markPayloadSynced({
       ...payload,
       settings: {
         ...payload.settings,
         githubPat: patValue,
         githubGistId: gistId,
       },
-    }
+    }, syncedAt)
 
-    await importAll(next)
     await pushGist(patValue, gistId, next)
+    await importAll(next)
     setDaily(next.settings.dailyNewCount)
     setPat(patValue)
     setGist(gistId)
@@ -149,6 +151,7 @@ export default function Settings() {
           },
           patValue,
           gistId,
+          now,
           '已上传到 Gist',
         )
         return
@@ -168,7 +171,7 @@ export default function Settings() {
         return
       }
 
-      await applyAndPush(payload, patValue, gistId, '同步完成')
+      await applyAndPush(payload, patValue, gistId, now, '同步完成')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '同步失败')
     } finally {
@@ -197,7 +200,7 @@ export default function Settings() {
 
     setBusy(true)
     try {
-      await applyAndPush(resolvedPayload, patValue, gistId, '冲突已处理并完成同步')
+      await applyAndPush(resolvedPayload, patValue, gistId, Date.now(), '冲突已处理并完成同步')
       setConflicts([])
       setPendingPayload(null)
     } catch (error) {
