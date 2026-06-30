@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-ssr
+.tsbuild/
+*.local
+.vscode/
+.idea/
+.DS_Store
+*.tsbuildinfo
