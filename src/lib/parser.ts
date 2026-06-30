@@ -10,7 +10,9 @@ export interface ParsedEntry {
   missing: string[]
 }
 
-export const FIELD_MAP: Record<string, keyof Omit<ParsedEntry, 'missing'>> = {
+type ParsedEntryKey = keyof Omit<ParsedEntry, 'missing'>
+
+export const FIELD_MAP: Record<string, ParsedEntryKey> = {
   单词: 'w',
   '音标（英 / 美）': 'p',
   '音标(英 / 美)': 'p',
@@ -23,7 +25,7 @@ export const FIELD_MAP: Record<string, keyof Omit<ParsedEntry, 'missing'>> = {
   例句中文翻译: 'exCn',
 }
 
-const REQUIRED_FIELDS: Array<keyof Omit<ParsedEntry, 'missing'>> = [
+const REQUIRED_FIELDS: ParsedEntryKey[] = [
   'w',
   'p',
   'pos',
@@ -54,7 +56,8 @@ export function parseEntries(text: string): ParsedEntry[] {
       const key = FIELD_MAP[match[1].trim()]
       if (!key) continue
 
-      ;(entry as Record<string, string>)[key] = match[2].trim()
+      const target = entry as ParsedEntry & Record<ParsedEntryKey, string | undefined>
+      target[key] = match[2].trim()
     }
 
     if (!entry.w) continue
