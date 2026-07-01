@@ -4,6 +4,7 @@ const ITEMS: Array<{ to: string; label: string }> = [
   { to: '/', label: '首页' },
   { to: '/library', label: '词库' },
   { to: '/import', label: '导入' },
+  { to: '/stats', label: '统计' },
   { to: '/settings', label: '设置' },
 ]
 
@@ -15,7 +16,7 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 grid grid-cols-4 border-t bg-white">
+    <nav className="fixed bottom-0 left-0 right-0 grid grid-cols-5 border-t bg-white">
       {ITEMS.map(({ to, label }) => (
         <NavLink
           key={to}

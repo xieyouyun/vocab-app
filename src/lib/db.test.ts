@@ -44,13 +44,13 @@ describe('db', () => {
 
   it('settings default + roundtrip', async () => {
     expect((await getSettings()).dailyNewCount).toBe(10)
-    await putSettings({ dailyNewCount: 25 })
+    await putSettings({ dailyNewCount: 25, completedDates: [], overachievedDates: [] })
     expect((await getSettings()).dailyNewCount).toBe(25)
   })
 
   it('clearAll empties everything', async () => {
     await putWord(make('x'))
-    await putSettings({ dailyNewCount: 99 })
+    await putSettings({ dailyNewCount: 99, completedDates: [], overachievedDates: [] })
     await clearAll()
     expect(await getAllWords()).toEqual([])
     expect((await getSettings()).dailyNewCount).toBe(10)

@@ -33,4 +33,6 @@ export interface Settings {
   githubGistId?: string
   lastSyncAt?: number
   currentSession?: SessionState
+  completedDates: string[]
+  overachievedDates: string[]
 }

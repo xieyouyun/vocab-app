@@ -35,12 +35,15 @@ function toJsonContent(payload: BackupPayload): string {
 }
 
 export function sanitizePayloadForGist(payload: BackupPayload): BackupPayload {
+  const { completedDates: _c, overachievedDates: _o, ...rest } = payload.settings
   return {
     version: payload.version,
     exportedAt: payload.exportedAt,
     words: payload.words,
     settings: {
-      dailyNewCount: payload.settings.dailyNewCount,
+      dailyNewCount: rest.dailyNewCount,
+      completedDates: [],
+      overachievedDates: [],
     },
   }
 }

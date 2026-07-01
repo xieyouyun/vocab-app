@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTodayQueue, insertAgain, nowDateString, resumeOrStartSession } from './session'
+import { buildTodayQueue, extendQueue, insertAgain, nowDateString, resumeOrStartSession } from './session'
 import type { Word } from './types'
 
 const make = (w: string, over: Partial<Word> = {}): Word => ({
@@ -72,5 +72,39 @@ describe('resumeOrStartSession', () => {
     const next = resumeOrStartSession(session, '2026-06-30', () => ['z'])
     expect(next.date).toBe('2026-06-30')
     expect(next.queue).toEqual(['z'])
+  })
+})
+
+describe('extendQueue', () => {
+  it('appends new words to existing queue', () => {
+    const words: Word[] = [make('new1'), make('new2'), make('new3'), make('new4')]
+    const session = { date: '2026-06-30', queue: ['a', 'b'], done: ['b'], startedAt: 0 }
+
+    const next = extendQueue(words, session, 2)
+    expect(next).toEqual(['a', 'b', 'new1', 'new2'])
+  })
+
+  it('skips words already in queue or done', () => {
+    const words: Word[] = [make('a'), make('b'), make('new1')]
+    const session = { date: '2026-06-30', queue: ['a'], done: ['b'], startedAt: 0 }
+
+    const next = extendQueue(words, session, 5)
+    expect(next).toEqual(['a', 'new1'])
+  })
+
+  it('skips non-new words', () => {
+    const words: Word[] = [make('done', { s: 'mastered' }), make('lr', { s: 'learning' })]
+    const session = { date: '2026-06-30', queue: ['x'], done: [], startedAt: 0 }
+
+    const next = extendQueue(words, session, 5)
+    expect(next).toEqual(['x'])
+  })
+
+  it('returns unchanged queue when no new words available', () => {
+    const words: Word[] = []
+    const session = { date: '2026-06-30', queue: ['a'], done: [], startedAt: 0 }
+
+    const next = extendQueue(words, session, 3)
+    expect(next).toEqual(['a'])
   })
 })

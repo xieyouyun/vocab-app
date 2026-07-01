@@ -4,7 +4,7 @@ import AnswerButtons from '../components/AnswerButtons'
 import WordCard from '../components/WordCard'
 import { getAllWords, getSettings, getWord, putSettings, putWord } from '../lib/db'
 import { applyAnswer } from '../lib/srs'
-import { buildTodayQueue, insertAgain, nowDateString, resumeOrStartSession } from '../lib/session'
+import { buildTodayQueue, extendQueue, insertAgain, nowDateString, resumeOrStartSession } from '../lib/session'
 import type { SessionState, Word } from '../lib/types'
 
 export default function Study() {
@@ -13,11 +13,14 @@ export default function Study() {
   const [cursor, setCursor] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [current, setCurrent] = useState<Word>()
+  const [allWords, setAllWords] = useState<Word[]>([])
+  const [extended, setExtended] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       const settings = await getSettings()
       const words = await getAllWords()
+      setAllWords(words)
       const today = nowDateString()
       const nextSession = resumeOrStartSession(settings.currentSession, today, () =>
         buildTodayQueue(words, settings.dailyNewCount),
@@ -38,16 +41,69 @@ export default function Study() {
     getWord(key).then(setCurrent)
   }, [session, cursor])
 
+  const recordCompletion = async (overachieved: boolean) => {
+    const settings = await getSettings()
+    const today = nowDateString()
+    const completedDates = settings.completedDates.includes(today)
+      ? settings.completedDates
+      : [...settings.completedDates, today]
+    const overachievedDates = overachieved && !settings.overachievedDates.includes(today)
+      ? [...settings.overachievedDates, today]
+      : settings.overachievedDates
+    await putSettings({ ...settings, completedDates, overachievedDates })
+  }
+
   if (!session) {
     return <main className="p-4">加载中</main>
   }
 
   if (cursor >= session.queue.length) {
+    const freshLeft = allWords.filter(
+      (w) => w.s === 'new' && !session.queue.includes(w.w) && !session.done.includes(w.w),
+    ).length
+
+    // mark completion once per day
+    recordCompletion(extended)
+
+    const newDone = session.done.filter((key) => {
+      const w = allWords.find((x) => x.w === key)
+      return w && w.s !== 'new'
+    }).length
+    const newStudied = session.done.length - newDone
+
     return (
       <main className="space-y-4 p-6 text-center">
         <div className="text-2xl">今日完成 🎉</div>
+        <div className="text-sm text-slate-500">
+          复习 {newDone} 个 · 新学 {newStudied} 个
+        </div>
+        {freshLeft > 0 ? (
+          <button
+            className="rounded bg-sky-600 px-4 py-2 text-white"
+            onClick={async () => {
+              const nextQueue = extendQueue(allWords, session, 5)
+              const nextSession = { ...session, queue: nextQueue }
+              setSession(nextSession)
+              setExtended(true)
+              const settings = await getSettings()
+              await putSettings({ ...settings, currentSession: nextSession })
+            }}
+          >
+            继续学新词（+{Math.min(5, freshLeft)}）
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-slate-400">没有更多新词了</p>
+            <button
+              className="text-sm text-sky-600 underline"
+              onClick={() => navigate('/import')}
+            >
+              去导入
+            </button>
+          </div>
+        )}
         <button
-          className="rounded bg-sky-600 px-4 py-2 text-white"
+          className="block mx-auto rounded bg-slate-100 px-4 py-2 text-sm"
           onClick={() => navigate('/')}
         >
           回首页

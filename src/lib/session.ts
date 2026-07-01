@@ -61,3 +61,16 @@ export function resumeOrStartSession(
     startedAt: Date.now(),
   }
 }
+
+export function extendQueue(
+  words: Word[],
+  session: SessionState,
+  count: number = 5,
+): string[] {
+  const fresh = words
+    .filter((word) => word.s === 'new' && !session.queue.includes(word.w) && !session.done.includes(word.w))
+    .slice(0, count)
+    .map((word) => word.w)
+
+  return [...session.queue, ...fresh]
+}

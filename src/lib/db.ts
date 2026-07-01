@@ -18,7 +18,7 @@ interface VocabSchema extends DBSchema {
 
 const DB_NAME = 'vocab'
 const DB_VERSION = 1
-const DEFAULT_SETTINGS: Settings = { dailyNewCount: 10 }
+const DEFAULT_SETTINGS: Settings = { dailyNewCount: 10, completedDates: [], overachievedDates: [] }
 
 let dbPromise: Promise<IDBPDatabase<VocabSchema>> | null = null
 

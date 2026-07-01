@@ -81,6 +81,8 @@ describe('sanitizePayloadForGist', () => {
       words: [W('a', 1)],
       settings: {
         dailyNewCount: 20,
+        completedDates: [],
+        overachievedDates: [],
         githubPat: 'secret',
         githubGistId: 'gist-1',
         lastSyncAt: 50,
@@ -99,6 +101,8 @@ describe('sanitizePayloadForGist', () => {
       words: [W('a', 1)],
       settings: {
         dailyNewCount: 20,
+        completedDates: [],
+        overachievedDates: [],
       },
     })
   })
@@ -112,6 +116,8 @@ describe('mergePayloads', () => {
       words: [W('a', 10, { cn: 'local' })],
       settings: {
         dailyNewCount: 20,
+        completedDates: [],
+        overachievedDates: [],
         githubPat: 'secret',
         githubGistId: 'gist-1',
         lastSyncAt: 5,
@@ -129,6 +135,8 @@ describe('mergePayloads', () => {
       words: [W('b', 12, { cn: 'remote' })],
       settings: {
         dailyNewCount: 10,
+        completedDates: [],
+        overachievedDates: [],
       },
     }
 
@@ -139,6 +147,8 @@ describe('mergePayloads', () => {
     expect(payload.words.map((word) => word.w).sort()).toEqual(['a', 'b'])
     expect(payload.settings).toEqual({
       dailyNewCount: 20,
+      completedDates: [],
+      overachievedDates: [],
       githubPat: 'secret',
       githubGistId: 'gist-1',
       currentSession: {
@@ -160,6 +170,8 @@ describe('markPayloadSynced', () => {
       words: [W('a', 10)],
       settings: {
         dailyNewCount: 20,
+        completedDates: [],
+        overachievedDates: [],
         githubPat: 'secret',
         githubGistId: 'gist-1',
         lastSyncAt: 5,
