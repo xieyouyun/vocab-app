@@ -9,6 +9,7 @@ export interface Word {
   enCn?: string
   ex?: string
   exCn?: string
+  tip?: string
   s: WordStatus
   streak: number
   ef: number

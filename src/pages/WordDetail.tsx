@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { deleteWord, getWord, putWord } from '../lib/db'
 import { markMastered, resetWordProgress } from '../lib/library'
+import { formatPhonetic } from '../lib/parser'
 import type { Word } from '../lib/types'
 
 export default function WordDetail() {
@@ -17,6 +18,8 @@ export default function WordDetail() {
   if (!word) {
     return <main className="p-4">未找到</main>
   }
+
+  const phonetic = formatPhonetic(word.p)
 
   const update = async (next: Word) => {
     await putWord(next)
@@ -34,12 +37,17 @@ export default function WordDetail() {
         ← 返回
       </button>
       <h1 className="text-3xl font-bold">{word.w}</h1>
-      <div className="text-slate-600">{word.p}</div>
+      {phonetic && <div className="text-slate-600">{phonetic}</div>}
       <div>
         {word.pos} · {word.cn}
       </div>
       <div className="text-sm">{word.en}</div>
       <div className="text-sm text-slate-600">{word.enCn}</div>
+      {word.tip && (
+        <div className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          💡 记忆技巧：{word.tip}
+        </div>
+      )}
       <div className="text-sm italic">{word.ex}</div>
       <div className="text-sm text-slate-600">{word.exCn}</div>
       <div className="text-xs text-slate-500">

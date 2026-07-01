@@ -7,6 +7,7 @@ export interface ParsedEntry {
   enCn?: string
   ex?: string
   exCn?: string
+  tip?: string
   missing: string[]
 }
 
@@ -23,6 +24,7 @@ export const FIELD_MAP: Record<string, ParsedEntryKey> = {
   释义中文翻译: 'enCn',
   英文例句: 'ex',
   例句中文翻译: 'exCn',
+  单词记忆技巧: 'tip',
 }
 
 const REQUIRED_FIELDS: ParsedEntryKey[] = [
@@ -37,6 +39,14 @@ const REQUIRED_FIELDS: ParsedEntryKey[] = [
 ]
 
 const LINE_RE = /【([^】]+)】[:：]\s*(.+)/
+
+/** 将 "/uk//us/" 格式的音标拆分为 "英 /uk/ 美 /us/" */
+export function formatPhonetic(p?: string): string | undefined {
+  if (!p) return undefined
+  const idx = p.indexOf('//', 1)
+  if (idx === -1) return p
+  return `英 ${p.slice(0, idx + 1)} 美 ${p.slice(idx + 1)}`
+}
 
 export function parseEntries(text: string): ParsedEntry[] {
   const blocks = text

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseEntries } from './parser'
+import { formatPhonetic, parseEntries } from './parser'
 
 const SINGLE = `【单词】：protein
 【音标（英 / 美）】：/ˈprəʊtiːn//ˈproʊtiːn/
@@ -8,7 +8,8 @@ const SINGLE = `【单词】：protein
 【英文释义】：a natural substance found in meat, eggs, fish, etc. that your body needs to grow and stay healthy
 【释义中文翻译】：存在于肉类、鸡蛋、鱼类等中的天然物质，人体生长和维持健康所需
 【英文例句】：You need more protein to build muscle.
-【例句中文翻译】：你需要更多蛋白质来增肌。`
+【例句中文翻译】：你需要更多蛋白质来增肌。
+【单词记忆技巧】：pro-（前）+ tein（与"teen"同源，成长）→ 帮助成长的物质`
 
 describe('parseEntries', () => {
   it('parses a full single entry', () => {
@@ -19,6 +20,7 @@ describe('parseEntries', () => {
       pos: 'n.',
       cn: '蛋白质',
       ex: 'You need more protein to build muscle.',
+      tip: 'pro-（前）+ tein（与"teen"同源，成长）→ 帮助成长的物质',
     })
     expect(entry.missing).toEqual([])
   })
@@ -50,5 +52,22 @@ describe('parseEntries', () => {
     const [entry] = parseEntries('【单词】:  trim  \n【中文翻译】:  整理  ')
     expect(entry.w).toBe('trim')
     expect(entry.cn).toBe('整理')
+  })
+})
+
+describe('formatPhonetic', () => {
+  it('formats /uk//us/ into 英/美 labels', () => {
+    expect(formatPhonetic('/ˈmeməraɪz//ˈmeməraɪz/')).toBe(
+      '英 /ˈmeməraɪz/ 美 /ˈmeməraɪz/',
+    )
+  })
+
+  it('returns original if no double-slash separator', () => {
+    expect(formatPhonetic('/ˈtest/')).toBe('/ˈtest/')
+  })
+
+  it('returns undefined for empty input', () => {
+    expect(formatPhonetic(undefined)).toBeUndefined()
+    expect(formatPhonetic('')).toBeUndefined()
   })
 })
