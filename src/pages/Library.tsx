@@ -43,22 +43,22 @@ export default function Library() {
       />
       <ul className="divide-y rounded border">
         {words.map((word) => (
-          <li key={word.w} className="flex items-center justify-between p-3">
+          <li key={word.w} className="flex items-start gap-3 p-3">
             <Link
               to={`/library/${encodeURIComponent(word.w)}`}
-              className="flex min-w-0 flex-1 items-center justify-between"
+              className="min-w-0 flex-1 space-y-1"
             >
-              <span>
+              <div>
                 <span className="font-medium">{word.w}</span>{' '}
                 <span className="text-sm text-slate-500">{word.cn}</span>
-              </span>
-              <span className="text-xs text-slate-500">
+              </div>
+              <div className="text-xs text-slate-500">
                 {STATUS_LABELS[word.s]} · {word.streak}次
-              </span>
+              </div>
             </Link>
             <button
               type="button"
-              className="ml-3 rounded bg-rose-100 px-2 py-1 text-xs text-rose-700"
+              className="shrink-0 rounded bg-rose-100 px-2 py-1 text-xs text-rose-700"
               aria-label={`删除 ${word.w}`}
               onClick={async (event) => {
                 event.preventDefault()
