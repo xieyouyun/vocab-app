@@ -1,4 +1,12 @@
-import { bulkPutWords, getWord } from './db'
+import {
+  bulkPutWords,
+  clearLastImport,
+  deleteWordAndCleanupSession,
+  getLastImport,
+  getWord,
+  putLastImport,
+  putWord,
+} from './db'
 import { parseEntries, type ParsedEntry } from './parser'
 import { newWord } from './srs'
 import type { Word } from './types'
@@ -24,6 +32,24 @@ export interface ImportItem {
 }
 
 const CONTENT_KEYS = ['p', 'pos', 'cn', 'en', 'enCn', 'ex', 'exCn', 'tip'] as const
+
+export interface ImportSummary {
+  added: number
+  overwritten: number
+}
+
+function mergeImportedWord(existing: Word, entry: ParsedEntry, now: number): Word {
+  const merged: Word = { ...existing, updatedAt: now }
+
+  for (const key of CONTENT_KEYS) {
+    const value = entry[key]
+    if (value !== undefined) {
+      merged[key] = value
+    }
+  }
+
+  return merged
+}
 
 export async function prepareImport(
   text: string,
@@ -61,14 +87,7 @@ export async function commitImport(
     }
 
     if (item.existing) {
-      const merged: Word = { ...item.existing, updatedAt: now }
-      for (const key of CONTENT_KEYS) {
-        const value = item.entry[key]
-        if (value !== undefined) {
-          merged[key] = value
-        }
-      }
-      toPut.push(merged)
+      toPut.push(mergeImportedWord(item.existing, item.entry, now))
       overwritten += 1
       continue
     }
@@ -79,4 +98,44 @@ export async function commitImport(
 
   await bulkPutWords(toPut)
   return { added, overwritten, skipped }
+}
+
+export async function importText(text: string, now: number = Date.now()): Promise<ImportSummary> {
+  const items = await prepareImport(text, now)
+  const decided = items.map((item) => ({
+    ...item,
+    decision: 'overwrite' as const,
+  }))
+
+  const overwrittenBefore = decided
+    .map((item) => item.existing)
+    .filter((word): word is Word => word !== undefined)
+
+  const result = await commitImport(decided, now)
+
+  await putLastImport({
+    importedAt: now,
+    addedWords: decided.filter((item) => !item.existing).map((item) => item.entry.w),
+    overwrittenBefore,
+    summary: { added: result.added, overwritten: result.overwritten },
+  })
+
+  return { added: result.added, overwritten: result.overwritten }
+}
+
+export async function rollbackLastImport(): Promise<{ deleted: number; restored: number }> {
+  const record = await getLastImport()
+
+  if (!record) {
+    throw new Error('没有可回滚的最近导入')
+  }
+
+  await Promise.all(record.overwrittenBefore.map((word) => putWord(word)))
+  await Promise.all(record.addedWords.map((word) => deleteWordAndCleanupSession(word)))
+  await clearLastImport()
+
+  return {
+    deleted: record.addedWords.length,
+    restored: record.overwrittenBefore.length,
+  }
 }

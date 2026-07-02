@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAllWords } from '../lib/db'
+import { deleteWordAndCleanupSession, getAllWords } from '../lib/db'
 import { filterAndSearch } from '../lib/library'
-import type { Word } from '../lib/types'
+import type { Word, WordStatus } from '../lib/types'
+
+const STATUS_LABELS: Record<WordStatus, string> = {
+  new: '新词',
+  learning: '学习中',
+  mastered: '已掌握',
+}
 
 export default function Library() {
   const [tab, setTab] = useState<'learning' | 'mastered' | 'all'>('learning')
@@ -16,7 +22,7 @@ export default function Library() {
   const words = filterAndSearch(allWords, tab, query)
 
   return (
-    <main className="p-4 pb-24">
+    <main className="app-page-shell--compact">
       <h1 className="mb-2 text-2xl font-bold">词库</h1>
       <div className="mb-2 flex gap-2 text-sm">
         {(['learning', 'mastered', 'all'] as const).map((value) => (
@@ -37,19 +43,33 @@ export default function Library() {
       />
       <ul className="divide-y rounded border">
         {words.map((word) => (
-          <li key={word.w}>
+          <li key={word.w} className="flex items-center justify-between p-3">
             <Link
               to={`/library/${encodeURIComponent(word.w)}`}
-              className="flex items-center justify-between p-3"
+              className="flex min-w-0 flex-1 items-center justify-between"
             >
               <span>
                 <span className="font-medium">{word.w}</span>{' '}
                 <span className="text-sm text-slate-500">{word.cn}</span>
               </span>
               <span className="text-xs text-slate-500">
-                {word.s} · streak {word.streak}
+                {STATUS_LABELS[word.s]} · {word.streak}次
               </span>
             </Link>
+            <button
+              type="button"
+              className="ml-3 rounded bg-rose-100 px-2 py-1 text-xs text-rose-700"
+              aria-label={`删除 ${word.w}`}
+              onClick={async (event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                if (!confirm(`确定删除 ${word.w} 吗？`)) return
+                await deleteWordAndCleanupSession(word.w)
+                setAllWords((prev) => prev.filter((item) => item.w !== word.w))
+              }}
+            >
+              删除
+            </button>
           </li>
         ))}
       </ul>

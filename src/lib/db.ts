@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Settings, Word } from './types'
+import { removeWordFromSession } from './session'
+import type { LastImportRecord, Settings, Word } from './types'
 
 interface VocabSchema extends DBSchema {
   words: {
@@ -11,13 +12,13 @@ interface VocabSchema extends DBSchema {
     }
   }
   meta: {
-    key: 'settings'
-    value: Settings
+    key: 'settings' | 'lastImport'
+    value: Settings | LastImportRecord
   }
 }
 
 const DB_NAME = 'vocab'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const DEFAULT_SETTINGS: Settings = { dailyNewCount: 10, completedDates: [], overachievedDates: [] }
 
 let dbPromise: Promise<IDBPDatabase<VocabSchema>> | null = null
@@ -25,11 +26,13 @@ let dbPromise: Promise<IDBPDatabase<VocabSchema>> | null = null
 export function openDb(): Promise<IDBPDatabase<VocabSchema>> {
   if (!dbPromise) {
     dbPromise = openDB<VocabSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        const words = db.createObjectStore('words', { keyPath: 'w' })
-        words.createIndex('by-s', 's')
-        words.createIndex('by-dueAt', 'dueAt')
-        db.createObjectStore('meta')
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const words = db.createObjectStore('words', { keyPath: 'w' })
+          words.createIndex('by-s', 's')
+          words.createIndex('by-dueAt', 'dueAt')
+          db.createObjectStore('meta')
+        }
       },
     })
   }
@@ -61,13 +64,39 @@ export async function deleteWord(w: string): Promise<void> {
   await (await openDb()).delete('words', w)
 }
 
+export async function getLastImport(): Promise<LastImportRecord | undefined> {
+  const db = await openDb()
+  return (await db.get('meta', 'lastImport')) as LastImportRecord | undefined
+}
+
+export async function putLastImport(record: LastImportRecord): Promise<void> {
+  await (await openDb()).put('meta', record, 'lastImport')
+}
+
+export async function clearLastImport(): Promise<void> {
+  await (await openDb()).delete('meta', 'lastImport')
+}
+
 export async function getSettings(): Promise<Settings> {
   const db = await openDb()
-  return (await db.get('meta', 'settings')) ?? { ...DEFAULT_SETTINGS }
+  return ((await db.get('meta', 'settings')) as Settings | undefined) ?? { ...DEFAULT_SETTINGS }
 }
 
 export async function putSettings(settings: Settings): Promise<void> {
   await (await openDb()).put('meta', settings, 'settings')
+}
+
+export async function deleteWordAndCleanupSession(word: string): Promise<void> {
+  const db = await openDb()
+  const tx = db.transaction(['words', 'meta'], 'readwrite')
+  const settings = ((await tx.objectStore('meta').get('settings')) as Settings | undefined) ?? {
+    ...DEFAULT_SETTINGS,
+  }
+  const nextSession = removeWordFromSession(settings.currentSession, word)
+
+  await tx.objectStore('words').delete(word)
+  await tx.objectStore('meta').put({ ...settings, currentSession: nextSession }, 'settings')
+  await tx.done
 }
 
 export async function clearAll(): Promise<void> {

@@ -74,3 +74,17 @@ export function extendQueue(
 
   return [...session.queue, ...fresh]
 }
+
+export function removeWordFromSession(
+  session: SessionState | undefined,
+  word: string,
+): SessionState | undefined {
+  if (!session) return session
+
+  const queue = session.queue.filter((key) => key !== word)
+  const done = session.done.filter((key) => key !== word)
+
+  return queue.length === session.queue.length && done.length === session.done.length
+    ? session
+    : { ...session, queue, done }
+}

@@ -27,6 +27,16 @@ export interface SessionState {
   startedAt: number
 }
 
+export interface LastImportRecord {
+  importedAt: number
+  addedWords: string[]
+  overwrittenBefore: Word[]
+  summary: {
+    added: number
+    overwritten: number
+  }
+}
+
 export interface Settings {
   dailyNewCount: number
   githubPat?: string

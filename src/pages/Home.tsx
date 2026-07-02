@@ -22,7 +22,7 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-md space-y-6 p-6 pb-24">
+    <main className="app-page-shell">
       <h1 className="text-2xl font-bold">{nowDateString()}</h1>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>

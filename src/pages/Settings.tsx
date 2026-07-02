@@ -211,7 +211,7 @@ export default function Settings() {
   }
 
   return (
-    <main className="space-y-6 p-4 pb-24">
+    <main className="app-page-shell">
       <h1 className="text-2xl font-bold">设置</h1>
 
       <section className="space-y-2">

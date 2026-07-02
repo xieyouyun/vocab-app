@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   bulkPutWords,
   clearAll,
+  clearLastImport,
+  deleteWordAndCleanupSession,
   deleteWord,
   getAllWords,
+  getLastImport,
   getSettings,
   getWord,
+  putLastImport,
   putSettings,
   putWord,
 } from './db'
-import type { Word } from './types'
+import type { LastImportRecord, Word } from './types'
 
 const make = (w: string, over: Partial<Word> = {}): Word => ({
   w,
@@ -54,5 +58,46 @@ describe('db', () => {
     await clearAll()
     expect(await getAllWords()).toEqual([])
     expect((await getSettings()).dailyNewCount).toBe(10)
+  })
+
+  it('stores and clears last import metadata', async () => {
+    const record: LastImportRecord = {
+      importedAt: 123,
+      addedWords: ['apple'],
+      overwrittenBefore: [],
+      summary: { added: 1, overwritten: 0 },
+    }
+
+    await putLastImport(record)
+    expect(await getLastImport()).toEqual(record)
+
+    await clearLastImport()
+    expect(await getLastImport()).toBeUndefined()
+  })
+
+  it('deletes a word and removes it from the active session', async () => {
+    await putWord(make('apple'))
+    await putWord(make('banana'))
+    await putSettings({
+      dailyNewCount: 10,
+      completedDates: [],
+      overachievedDates: [],
+      currentSession: {
+        date: '2026-07-02',
+        queue: ['apple', 'banana'],
+        done: ['apple'],
+        startedAt: 1,
+      },
+    })
+
+    await deleteWordAndCleanupSession('apple')
+
+    expect(await getWord('apple')).toBeUndefined()
+    expect((await getSettings()).currentSession).toEqual({
+      date: '2026-07-02',
+      queue: ['banana'],
+      done: [],
+      startedAt: 1,
+    })
   })
 })

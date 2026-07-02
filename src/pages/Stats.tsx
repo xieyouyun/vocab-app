@@ -77,7 +77,7 @@ export default function Stats() {
   const monthLabel = `${year}年${month + 1}月`
 
   return (
-    <main className="mx-auto max-w-md space-y-6 p-4 pb-24">
+    <main className="app-page-shell">
       <h1 className="text-2xl font-bold">统计</h1>
 
       <div className="grid grid-cols-3 gap-2 text-center">

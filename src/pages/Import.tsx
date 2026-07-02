@@ -1,37 +1,40 @@
-import { useState } from 'react'
-import { commitImport, type ImportItem, prepareImport, TEMPLATE_TEXT } from '../lib/import'
+import { useEffect, useState } from 'react'
+import { getLastImport } from '../lib/db'
+import { importText, rollbackLastImport, TEMPLATE_TEXT } from '../lib/import'
 
 export default function Import() {
   const [text, setText] = useState('')
-  const [items, setItems] = useState<ImportItem[]>([])
   const [result, setResult] = useState('')
+  const [canRollback, setCanRollback] = useState(false)
 
   const copyTemplate = async () => {
     await navigator.clipboard.writeText(TEMPLATE_TEXT)
     setResult('模板已复制')
   }
 
-  const parse = async () => {
-    const next = await prepareImport(text)
-    setItems(next)
-    setResult('')
-  }
-
-  const setDecision = (index: number, decision: 'overwrite' | 'skip') => {
-    setItems((prev) =>
-      prev.map((item, current) => (current === index ? { ...item, decision } : item)),
-    )
-  }
+  useEffect(() => {
+    getLastImport().then((record) => setCanRollback(Boolean(record)))
+  }, [])
 
   const submit = async () => {
-    const summary = await commitImport(items)
-    setResult(`新增 ${summary.added}，覆盖 ${summary.overwritten}，跳过 ${summary.skipped}`)
-    setItems([])
+    const summary = await importText(text)
+    setResult(`新增 ${summary.added}，覆盖 ${summary.overwritten}`)
     setText('')
+    setCanRollback(true)
+  }
+
+  const rollback = async () => {
+    if (!confirm('将删除最近一次导入新增的单词，并恢复被覆盖单词的旧内容。该操作不可再次回滚。')) {
+      return
+    }
+
+    const summary = await rollbackLastImport()
+    setResult(`已回滚最近一次导入：删除 ${summary.deleted}，恢复 ${summary.restored}`)
+    setCanRollback(false)
   }
 
   return (
-    <main className="p-4 pb-24 space-y-4">
+    <main className="app-page-shell--compact">
       <h1 className="text-2xl font-bold">导入</h1>
       <button className="rounded border bg-slate-100 px-4 py-2" onClick={copyTemplate}>
         复制模板提示词
@@ -44,57 +47,19 @@ export default function Import() {
         className="w-full rounded border p-2 font-mono text-sm"
       />
       <div className="flex gap-2">
-        <button className="rounded bg-sky-600 px-4 py-2 text-white" onClick={parse}>
-          解析
+        <button className="rounded bg-sky-600 px-4 py-2 text-white" onClick={submit}>
+          解析并导入
         </button>
-        {items.length > 0 && (
+        {canRollback && (
           <button
-            className="rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-40"
-            disabled={items.some((item) => item.existing && !item.decision)}
-            onClick={submit}
+            className="rounded bg-amber-600 px-4 py-2 text-white"
+            onClick={rollback}
           >
-            提交
+            回滚最近一次导入
           </button>
         )}
       </div>
       {result && <p className="text-sm text-slate-600">{result}</p>}
-      <ul className="divide-y rounded border">
-        {items.map((item, index) => (
-          <li key={item.entry.w} className="flex items-center justify-between p-2">
-            <div>
-              <span className="font-medium">{item.entry.w}</span>
-              {item.entry.missing.length > 0 && (
-                <span className="ml-2 text-xs text-amber-600">
-                  缺 {item.entry.missing.join(',')}
-                </span>
-              )}
-              {item.existing && <span className="ml-2 text-xs text-rose-600">已存在</span>}
-            </div>
-            {item.existing && (
-              <div className="space-x-2 text-sm">
-                <label>
-                  <input
-                    type="radio"
-                    name={`decision-${index}`}
-                    checked={item.decision === 'overwrite'}
-                    onChange={() => setDecision(index, 'overwrite')}
-                  />{' '}
-                  覆盖
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name={`decision-${index}`}
-                    checked={item.decision === 'skip'}
-                    onChange={() => setDecision(index, 'skip')}
-                  />{' '}
-                  跳过
-                </label>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
     </main>
   )
 }

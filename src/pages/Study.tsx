@@ -4,7 +4,14 @@ import AnswerButtons from '../components/AnswerButtons'
 import WordCard from '../components/WordCard'
 import { getAllWords, getSettings, getWord, putSettings, putWord } from '../lib/db'
 import { applyAnswer } from '../lib/srs'
-import { buildTodayQueue, extendQueue, insertAgain, nowDateString, resumeOrStartSession } from '../lib/session'
+import {
+  buildTodayQueue,
+  extendQueue,
+  insertAgain,
+  nowDateString,
+  removeWordFromSession,
+  resumeOrStartSession,
+} from '../lib/session'
 import type { SessionState, Word } from '../lib/types'
 
 export default function Study() {
@@ -38,7 +45,23 @@ export default function Study() {
       setCurrent(undefined)
       return
     }
-    getWord(key).then(setCurrent)
+    getWord(key).then(async (word) => {
+      if (word) {
+        setCurrent(word)
+        return
+      }
+
+      const nextSession = removeWordFromSession(session, key)
+      if (!nextSession) {
+        setCurrent(undefined)
+        return
+      }
+
+      setCurrent(undefined)
+      setSession(nextSession)
+      const settings = await getSettings()
+      await putSettings({ ...settings, currentSession: nextSession })
+    })
   }, [session, cursor])
 
   const recordCompletion = async (overachieved: boolean) => {
