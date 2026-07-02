@@ -29,6 +29,7 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   const [pendingPayload, setPendingPayload] = useState<Awaited<ReturnType<typeof exportAll>> | null>(null)
+  const [showGuide, setShowGuide] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const hydratedRef = useRef(false)
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -286,7 +287,66 @@ export default function Settings() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-medium">GitHub 同步</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">GitHub 同步</h2>
+          <button
+            type="button"
+            className="text-xs text-sky-600 underline"
+            onClick={() => setShowGuide((prev) => !prev)}
+            aria-expanded={showGuide}
+          >
+            {showGuide ? '收起说明' : '如何获取？'}
+          </button>
+        </div>
+        {showGuide && (
+          <div className="rounded border border-sky-100 bg-sky-50 p-3 text-xs leading-relaxed text-slate-700">
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>
+                打开{' '}
+                <a
+                  className="text-sky-700 underline"
+                  href="https://github.com/settings/tokens?type=beta"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub Fine-grained Tokens
+                </a>
+                {' '}或{' '}
+                <a
+                  className="text-sky-700 underline"
+                  href="https://github.com/settings/tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Classic Tokens
+                </a>
+                页面，登录你的 GitHub 账号。
+              </li>
+              <li>
+                点击 <span className="font-mono">Generate new token</span>，设置一个有效期。
+              </li>
+              <li>
+                权限选择：
+                <ul className="mt-1 list-disc pl-4">
+                  <li>Fine-grained：<span className="font-mono">Account permissions → Gists → Read and write</span></li>
+                  <li>Classic：勾选 <span className="font-mono">gist</span></li>
+                </ul>
+              </li>
+              <li>
+                生成后复制 token，粘贴到下方 <span className="font-mono">Personal Access Token</span> 输入框，会自动保存到本地。
+              </li>
+              <li>
+                <span className="font-mono">Gist ID</span> 首次留空，点“立即同步”会自动创建一个私有 Gist；创建后系统会自动填入 Gist ID。
+              </li>
+              <li>
+                换设备时，在新设备粘贴同一个 token 和 Gist ID，即可双向同步词库。
+              </li>
+            </ol>
+            <p className="mt-2 text-slate-500">
+              说明：Token 仅保存在本机 IndexedDB，不会上传到 Gist 备份内容中。
+            </p>
+          </div>
+        )}
         {savedPat && !editingPat ? (
           <div className="flex items-center gap-2 rounded border bg-slate-50 px-2 py-2 text-sm">
             <span className="flex-1 text-slate-700">
