@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import NavBar from './components/NavBar'
+import PWAUpdatePrompt from './components/PWAUpdatePrompt'
 import Home from './pages/Home'
 import Import from './pages/Import'
 import Library from './pages/Library'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <NavBar />
+      <PWAUpdatePrompt />
     </BrowserRouter>
   )
 }
