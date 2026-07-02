@@ -14,31 +14,76 @@ import ConflictDialog from '../components/ConflictDialog'
 
 const clampDaily = (value: number) => Math.min(100, Math.max(1, value))
 
+const maskPat = (pat: string) => {
+  if (pat.length <= 8) return '****'
+  return `${pat.slice(0, 4)}${'*'.repeat(6)}${pat.slice(-4)}`
+}
+
 export default function Settings() {
   const [daily, setDaily] = useState(10)
   const [pat, setPat] = useState('')
   const [gist, setGist] = useState('')
+  const [savedPat, setSavedPat] = useState('')
+  const [editingPat, setEditingPat] = useState(false)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   const [pendingPayload, setPendingPayload] = useState<Awaited<ReturnType<typeof exportAll>> | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const hydratedRef = useRef(false)
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     getSettings().then((settings) => {
       setDaily(settings.dailyNewCount)
-      setPat(settings.githubPat ?? '')
+      setSavedPat(settings.githubPat ?? '')
+      setPat('')
+      setEditingPat(!settings.githubPat)
       setGist(settings.githubGistId ?? '')
+      hydratedRef.current = true
     })
   }, [])
 
+  useEffect(() => {
+    if (!hydratedRef.current) return
+
+    const patToSave = editingPat ? pat.trim() : savedPat
+    const gistToSave = gist.trim()
+
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current)
+    }
+
+    autosaveTimer.current = setTimeout(async () => {
+      const current = await getSettings()
+      const nextPat = patToSave || undefined
+      const nextGist = gistToSave || undefined
+
+      if (current.githubPat === nextPat && current.githubGistId === nextGist) {
+        return
+      }
+
+      await putSettings({
+        ...current,
+        githubPat: nextPat,
+        githubGistId: nextGist,
+      })
+      if (patToSave) setSavedPat(patToSave)
+    }, 400)
+
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    }
+  }, [pat, gist, editingPat, savedPat])
+
   const buildSettings = async () => {
     const settings = await getSettings()
+    const effectivePat = editingPat ? pat.trim() : savedPat
 
     return {
       ...settings,
       dailyNewCount: clampDaily(daily),
-      githubPat: pat.trim() || undefined,
+      githubPat: effectivePat || undefined,
       githubGistId: gist.trim() || undefined,
     }
   }
@@ -48,6 +93,11 @@ export default function Settings() {
     await putSettings(next)
     setDaily(next.dailyNewCount)
     setGist(next.githubGistId ?? '')
+    setSavedPat(next.githubPat ?? '')
+    if (next.githubPat) {
+      setEditingPat(false)
+      setPat('')
+    }
     setMessage('已保存')
   }
 
@@ -67,7 +117,9 @@ export default function Settings() {
     await importAll(JSON.parse(await file.text()))
     const settings = await getSettings()
     setDaily(settings.dailyNewCount)
-    setPat(settings.githubPat ?? '')
+    setSavedPat(settings.githubPat ?? '')
+    setPat('')
+    setEditingPat(!settings.githubPat)
     setGist(settings.githubGistId ?? '')
     setMessage('导入完成')
   }
@@ -77,6 +129,10 @@ export default function Settings() {
     await clearAll()
     setConflicts([])
     setPendingPayload(null)
+    setSavedPat('')
+    setPat('')
+    setGist('')
+    setEditingPat(true)
     setMessage('已清空')
   }
 
@@ -99,7 +155,9 @@ export default function Settings() {
     await pushGist(patValue, gistId, next)
     await importAll(next)
     setDaily(next.settings.dailyNewCount)
-    setPat(patValue)
+    setSavedPat(patValue)
+    setPat('')
+    setEditingPat(false)
     setGist(gistId)
     setMessage(successMessage)
   }
@@ -229,13 +287,31 @@ export default function Settings() {
 
       <section className="space-y-2">
         <h2 className="font-medium">GitHub 同步</h2>
-        <input
-          type="password"
-          placeholder="Personal Access Token (gist 权限)"
-          value={pat}
-          onChange={(event) => setPat(event.target.value)}
-          className="w-full rounded border px-2 py-1"
-        />
+        {savedPat && !editingPat ? (
+          <div className="flex items-center gap-2 rounded border bg-slate-50 px-2 py-2 text-sm">
+            <span className="flex-1 text-slate-700">
+              已保存 GitHub PAT：<span className="font-mono">{maskPat(savedPat)}</span>
+            </span>
+            <button
+              type="button"
+              className="rounded bg-slate-200 px-2 py-1 text-xs"
+              onClick={() => {
+                setPat('')
+                setEditingPat(true)
+              }}
+            >
+              修改 PAT
+            </button>
+          </div>
+        ) : (
+          <input
+            type="password"
+            placeholder="Personal Access Token (gist 权限)"
+            value={pat}
+            onChange={(event) => setPat(event.target.value)}
+            className="w-full rounded border px-2 py-1"
+          />
+        )}
         <input
           type="text"
           placeholder="Gist ID（首次留空，按需手动创建）"
@@ -243,6 +319,7 @@ export default function Settings() {
           onChange={(event) => setGist(event.target.value)}
           className="w-full rounded border px-2 py-1"
         />
+        <p className="text-xs text-slate-500">输入后会自动保存到本地，无需再次输入</p>
         <button
           className="rounded bg-sky-600 px-3 py-2 text-white disabled:opacity-40"
           onClick={() => void syncNow()}

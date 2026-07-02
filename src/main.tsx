@@ -6,6 +6,16 @@ import { exportAll, importAll } from './lib/backup'
 import { getSettings } from './lib/db'
 import { fetchGist, mergePayloads } from './lib/sync'
 
+async function requestPersistentStorage() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+      await navigator.storage.persist()
+    }
+  } catch {
+    // ignore; persistence is best-effort
+  }
+}
+
 async function bootSync() {
   try {
     const settings = await getSettings()
@@ -32,6 +42,7 @@ async function bootSync() {
   }
 }
 
+void requestPersistentStorage()
 void bootSync().finally(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
