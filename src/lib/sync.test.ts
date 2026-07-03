@@ -11,7 +11,7 @@ const W = (w: string, updatedAt: number, over: Partial<Word> = {}): Word => ({
 })
 
 describe('sanitizePayloadForGist', () => {
-  it('strips local-only settings and secrets before upload', () => {
+  it('strips secrets/session but keeps attendance and streaks', () => {
     const payload: BackupPayload = {
       version: 1,
       exportedAt: 100,
@@ -20,6 +20,8 @@ describe('sanitizePayloadForGist', () => {
         dailyNewCount: 20,
         completedDates: ['2026-06-30'],
         overachievedDates: ['2026-06-30'],
+        totalCompletedDays: 42,
+        longestStreak: 7,
         githubPat: 'secret',
         githubGistId: 'gist-1',
         lastSyncAt: 50,
@@ -38,8 +40,10 @@ describe('sanitizePayloadForGist', () => {
       words: [W('a', 1)],
       settings: {
         dailyNewCount: 20,
-        completedDates: [],
-        overachievedDates: [],
+        completedDates: ['2026-06-30'],
+        overachievedDates: ['2026-06-30'],
+        totalCompletedDays: 42,
+        longestStreak: 7,
       },
     })
   })

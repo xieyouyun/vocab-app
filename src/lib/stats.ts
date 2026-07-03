@@ -69,6 +69,61 @@ export function calcLongestStreak(completedDates: string[]): number {
   return Math.max(longest, current)
 }
 
+const NINETY_DAYS_MS = 90 * 86_400_000
+
+export function pruneToRecent90Days(dates: string[], now: number = Date.now()): string[] {
+  const cutoff = toDateString(new Date(now - NINETY_DAYS_MS))
+  const set = new Set(dates.filter((d) => d >= cutoff))
+  return [...set].sort()
+}
+
+export function mergeAttendance(
+  local: {
+    completedDates: string[]
+    overachievedDates: string[]
+    totalCompletedDays: number
+    longestStreak: number
+  },
+  remote: {
+    completedDates: string[]
+    overachievedDates: string[]
+    totalCompletedDays?: number
+    longestStreak?: number
+  },
+  now: number = Date.now(),
+): {
+  completedDates: string[]
+  overachievedDates: string[]
+  totalCompletedDays: number
+  longestStreak: number
+} {
+  const completedUnion = pruneToRecent90Days(
+    [...new Set([...local.completedDates, ...remote.completedDates])],
+    now,
+  )
+  const overachievedUnion = pruneToRecent90Days(
+    [...new Set([...local.overachievedDates, ...remote.overachievedDates])],
+    now,
+  )
+  const totalCompletedDays = Math.max(
+    local.totalCompletedDays,
+    remote.totalCompletedDays ?? 0,
+    completedUnion.length,
+  )
+  const longestStreak = Math.max(
+    local.longestStreak,
+    remote.longestStreak ?? 0,
+    calcLongestStreak(completedUnion),
+  )
+
+  return {
+    completedDates: completedUnion,
+    overachievedDates: overachievedUnion,
+    totalCompletedDays,
+    longestStreak,
+  }
+}
+
 function toDateString(date: Date): string {
   const pad = (n: number) => `${n}`.padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`

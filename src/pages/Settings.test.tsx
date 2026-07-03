@@ -17,6 +17,8 @@ describe('Settings page', () => {
       dailyNewCount: 10,
       completedDates: [],
       overachievedDates: [],
+      totalCompletedDays: 0,
+      longestStreak: 0,
       githubPat: 'ghp_secretsecretsecretsecret1234',
       githubGistId: 'gist-abc',
     })

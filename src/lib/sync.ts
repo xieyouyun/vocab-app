@@ -1,3 +1,5 @@
+import { exportAll } from './backup'
+import { getSettings, putSettings } from './db'
 import type { BackupPayload } from './backup'
 import type { Word } from './types'
 
@@ -41,8 +43,10 @@ export function sanitizePayloadForGist(payload: BackupPayload): BackupPayload {
     words: payload.words,
     settings: {
       dailyNewCount: payload.settings.dailyNewCount,
-      completedDates: [],
-      overachievedDates: [],
+      completedDates: payload.settings.completedDates,
+      overachievedDates: payload.settings.overachievedDates,
+      totalCompletedDays: payload.settings.totalCompletedDays,
+      longestStreak: payload.settings.longestStreak,
     },
   }
 }
@@ -91,4 +95,36 @@ export async function pushGist(pat: string, id: string, payload: BackupPayload):
     }),
   })
   assertOk(response, 'pushGist')
+}
+
+export type UploadOutcome =
+  | { status: 'uploaded'; gistId: string }
+  | { status: 'created'; gistId: string }
+  | { status: 'skipped'; reason: 'no-pat' }
+  | { status: 'error'; error: string }
+
+export async function uploadLocalToCloud(): Promise<UploadOutcome> {
+  const settings = await getSettings()
+  const pat = settings.githubPat
+  if (!pat) {
+    return { status: 'skipped', reason: 'no-pat' }
+  }
+
+  try {
+    const now = Date.now()
+    const payload = await exportAll(now)
+    const existingGistId = settings.githubGistId
+
+    if (!existingGistId) {
+      const newId = await createGist(pat, payload)
+      await putSettings({ ...settings, githubGistId: newId, lastSyncAt: now })
+      return { status: 'created', gistId: newId }
+    }
+
+    await pushGist(pat, existingGistId, payload)
+    await putSettings({ ...settings, lastSyncAt: now })
+    return { status: 'uploaded', gistId: existingGistId }
+  } catch (error) {
+    return { status: 'error', error: error instanceof Error ? error.message : String(error) }
+  }
 }

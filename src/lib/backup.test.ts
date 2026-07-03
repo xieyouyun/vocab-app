@@ -10,7 +10,13 @@ describe('backup', () => {
 
   it('roundtrip preserves words and settings', async () => {
     await putWord(newWord({ w: 'apple', cn: '苹果' }, 0))
-    await putSettings({ dailyNewCount: 25, completedDates: [], overachievedDates: [] })
+    await putSettings({
+      dailyNewCount: 25,
+      completedDates: [],
+      overachievedDates: [],
+      totalCompletedDays: 0,
+      longestStreak: 0,
+    })
 
     const dump = await exportAll(1234)
     expect(dump.version).toBe(1)
@@ -30,7 +36,13 @@ describe('backup', () => {
       version: 1,
       exportedAt: 0,
       words: [newWord({ w: 'new' }, 0)],
-      settings: { dailyNewCount: 10, completedDates: [], overachievedDates: [] },
+      settings: {
+        dailyNewCount: 10,
+        completedDates: [],
+        overachievedDates: [],
+        totalCompletedDays: 0,
+        longestStreak: 0,
+      },
     })
 
     const all = await getAllWords()

@@ -45,4 +45,6 @@ export interface Settings {
   currentSession?: SessionState
   completedDates: string[]
   overachievedDates: string[]
+  totalCompletedDays: number
+  longestStreak: number
 }

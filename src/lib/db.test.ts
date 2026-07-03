@@ -48,13 +48,25 @@ describe('db', () => {
 
   it('settings default + roundtrip', async () => {
     expect((await getSettings()).dailyNewCount).toBe(10)
-    await putSettings({ dailyNewCount: 25, completedDates: [], overachievedDates: [] })
+    await putSettings({
+      dailyNewCount: 25,
+      completedDates: [],
+      overachievedDates: [],
+      totalCompletedDays: 0,
+      longestStreak: 0,
+    })
     expect((await getSettings()).dailyNewCount).toBe(25)
   })
 
   it('clearAll empties everything', async () => {
     await putWord(make('x'))
-    await putSettings({ dailyNewCount: 99, completedDates: [], overachievedDates: [] })
+    await putSettings({
+      dailyNewCount: 99,
+      completedDates: [],
+      overachievedDates: [],
+      totalCompletedDays: 0,
+      longestStreak: 0,
+    })
     await clearAll()
     expect(await getAllWords()).toEqual([])
     expect((await getSettings()).dailyNewCount).toBe(10)
@@ -82,6 +94,8 @@ describe('db', () => {
       dailyNewCount: 10,
       completedDates: [],
       overachievedDates: [],
+      totalCompletedDays: 0,
+      longestStreak: 0,
       currentSession: {
         date: '2026-07-02',
         queue: ['apple', 'banana'],

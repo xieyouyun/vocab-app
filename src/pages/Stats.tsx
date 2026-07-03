@@ -20,6 +20,8 @@ export default function Stats() {
   const [words, setWords] = useState<Word[]>([])
   const [completedDates, setCompletedDates] = useState<string[]>([])
   const [overachievedDates, setOverachievedDates] = useState<string[]>([])
+  const [totalCompletedDays, setTotalCompletedDays] = useState(0)
+  const [longestStreak, setLongestStreak] = useState(0)
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [month, setMonth] = useState(() => new Date().getMonth())
 
@@ -29,12 +31,14 @@ export default function Stats() {
       const s = await getSettings()
       setCompletedDates(s.completedDates)
       setOverachievedDates(s.overachievedDates)
+      setTotalCompletedDays(s.totalCompletedDays)
+      setLongestStreak(s.longestStreak)
     })()
   }, [])
 
   const today = toDateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
   const streak = calcStreak(completedDates)
-  const longest = calcLongestStreak(completedDates)
+  const longest = Math.max(longestStreak, calcLongestStreak(completedDates))
 
   const prevMonth = () => {
     if (month === 0) {
@@ -86,7 +90,7 @@ export default function Stats() {
           <div className="text-xs text-slate-500">累积完成单词</div>
         </div>
         <div className="rounded bg-slate-50 py-3">
-          <div className="text-xl font-bold">{completedDates.length}</div>
+          <div className="text-xl font-bold">{totalCompletedDays}</div>
           <div className="text-xs text-slate-500">累积完成天数</div>
         </div>
         <div className="rounded bg-slate-50 py-3">

@@ -19,7 +19,13 @@ interface VocabSchema extends DBSchema {
 
 const DB_NAME = 'vocab'
 const DB_VERSION = 2
-const DEFAULT_SETTINGS: Settings = { dailyNewCount: 10, completedDates: [], overachievedDates: [] }
+const DEFAULT_SETTINGS: Settings = {
+  dailyNewCount: 10,
+  completedDates: [],
+  overachievedDates: [],
+  totalCompletedDays: 0,
+  longestStreak: 0,
+}
 
 let dbPromise: Promise<IDBPDatabase<VocabSchema>> | null = null
 
@@ -79,7 +85,20 @@ export async function clearLastImport(): Promise<void> {
 
 export async function getSettings(): Promise<Settings> {
   const db = await openDb()
-  return ((await db.get('meta', 'settings')) as Settings | undefined) ?? { ...DEFAULT_SETTINGS }
+  const stored = (await db.get('meta', 'settings')) as Settings | undefined
+  if (!stored) return { ...DEFAULT_SETTINGS }
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    totalCompletedDays:
+      typeof stored.totalCompletedDays === 'number'
+        ? stored.totalCompletedDays
+        : stored.completedDates?.length ?? 0,
+    longestStreak:
+      typeof stored.longestStreak === 'number'
+        ? stored.longestStreak
+        : 0,
+  }
 }
 
 export async function putSettings(settings: Settings): Promise<void> {
@@ -87,12 +106,10 @@ export async function putSettings(settings: Settings): Promise<void> {
 }
 
 export async function deleteWordAndCleanupSession(word: string): Promise<void> {
+  const settings = await getSettings()
+  const nextSession = removeWordFromSession(settings.currentSession, word)
   const db = await openDb()
   const tx = db.transaction(['words', 'meta'], 'readwrite')
-  const settings = ((await tx.objectStore('meta').get('settings')) as Settings | undefined) ?? {
-    ...DEFAULT_SETTINGS,
-  }
-  const nextSession = removeWordFromSession(settings.currentSession, word)
 
   await tx.objectStore('words').delete(word)
   await tx.objectStore('meta').put({ ...settings, currentSession: nextSession }, 'settings')

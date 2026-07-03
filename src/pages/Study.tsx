@@ -12,6 +12,8 @@ import {
   removeWordFromSession,
   resumeOrStartSession,
 } from '../lib/session'
+import { calcLongestStreak, pruneToRecent90Days } from '../lib/stats'
+import { uploadLocalToCloud } from '../lib/sync'
 import type { SessionState, Word } from '../lib/types'
 
 export default function Study() {
@@ -67,13 +69,38 @@ export default function Study() {
   const recordCompletion = async (overachieved: boolean) => {
     const settings = await getSettings()
     const today = nowDateString()
-    const completedDates = settings.completedDates.includes(today)
-      ? settings.completedDates
-      : [...settings.completedDates, today]
-    const overachievedDates = overachieved && !settings.overachievedDates.includes(today)
-      ? [...settings.overachievedDates, today]
-      : settings.overachievedDates
-    await putSettings({ ...settings, completedDates, overachievedDates })
+    const alreadyCompleted = settings.completedDates.includes(today)
+    const alreadyOverachieved = settings.overachievedDates.includes(today)
+
+    if (alreadyCompleted && (!overachieved || alreadyOverachieved)) {
+      return
+    }
+
+    const nextCompleted = pruneToRecent90Days(
+      alreadyCompleted ? settings.completedDates : [...settings.completedDates, today],
+    )
+    const nextOverachieved = pruneToRecent90Days(
+      overachieved && !alreadyOverachieved
+        ? [...settings.overachievedDates, today]
+        : settings.overachievedDates,
+    )
+    const totalCompletedDays = alreadyCompleted
+      ? settings.totalCompletedDays
+      : settings.totalCompletedDays + 1
+    const longestStreak = Math.max(
+      settings.longestStreak,
+      calcLongestStreak(nextCompleted),
+    )
+
+    await putSettings({
+      ...settings,
+      completedDates: nextCompleted,
+      overachievedDates: nextOverachieved,
+      totalCompletedDays,
+      longestStreak,
+    })
+
+    void uploadLocalToCloud().catch(() => {})
   }
 
   if (!session) {

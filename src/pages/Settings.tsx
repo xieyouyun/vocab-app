@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { exportAll, importAll } from '../lib/backup'
 import { clearAll, getSettings, putSettings } from '../lib/db'
-import { createGist, fetchGist, pushGist } from '../lib/sync'
+import { mergeAttendance } from '../lib/stats'
+import { fetchGist } from '../lib/sync'
 
 const clampDaily = (value: number) => Math.min(100, Math.max(1, value))
 
@@ -124,57 +125,6 @@ export default function Settings() {
     setMessage('已清空')
   }
 
-  const uploadToCloud = async () => {
-    if (!confirm('确定用本地数据覆盖云端 Gist？这会替换云端全部内容。')) return
-
-    setBusy(true)
-    setMessage('')
-
-    try {
-      const currentSettings = await buildSettings()
-      const patValue = currentSettings.githubPat
-
-      if (!patValue) {
-        setMessage('请先填写 GitHub PAT')
-        return
-      }
-
-      await putSettings(currentSettings)
-
-      const now = Date.now()
-      const local = await exportAll(now)
-      const payload = {
-        ...local,
-        settings: currentSettings,
-      }
-
-      let gistId = currentSettings.githubGistId
-      if (!gistId) {
-        gistId = await createGist(patValue, payload)
-        await putSettings({
-          ...currentSettings,
-          githubGistId: gistId,
-          lastSyncAt: now,
-        })
-        setGist(gistId)
-        setMessage('已创建 Gist 并完成首次上传')
-        return
-      }
-
-      await pushGist(patValue, gistId, payload)
-      await putSettings({
-        ...currentSettings,
-        githubGistId: gistId,
-        lastSyncAt: now,
-      })
-      setMessage('已上传，云端已被本地内容覆盖')
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '上传失败')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const downloadFromCloud = async () => {
     if (!confirm('确定用云端数据覆盖本地？这会替换本地全部词库和设置。')) return
 
@@ -201,11 +151,28 @@ export default function Settings() {
         return
       }
 
+      const localSettings = await getSettings()
+      const attendance = mergeAttendance(
+        {
+          completedDates: localSettings.completedDates,
+          overachievedDates: localSettings.overachievedDates,
+          totalCompletedDays: localSettings.totalCompletedDays,
+          longestStreak: localSettings.longestStreak,
+        },
+        {
+          completedDates: remote.settings.completedDates ?? [],
+          overachievedDates: remote.settings.overachievedDates ?? [],
+          totalCompletedDays: remote.settings.totalCompletedDays,
+          longestStreak: remote.settings.longestStreak,
+        },
+      )
+
       const now = Date.now()
       const merged = {
         ...remote,
         settings: {
           ...remote.settings,
+          ...attendance,
           githubPat: patValue,
           githubGistId: gistId,
           lastSyncAt: now,
@@ -218,7 +185,7 @@ export default function Settings() {
       setPat('')
       setEditingPat(false)
       setGist(gistId)
-      setMessage('已下载，本地已被云端内容覆盖')
+      setMessage('已下载：词库已被云端覆盖，打卡日历已并集')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '下载失败')
     } finally {
@@ -293,10 +260,10 @@ export default function Settings() {
                 生成后复制 token，粘贴到下方 <span className="font-mono">Personal Access Token</span> 输入框，会自动保存到本地。
               </li>
               <li>
-                <span className="font-mono">Gist ID</span> 首次留空，点“上传到云端”会自动创建一个私有 Gist；创建后系统会自动填入 Gist ID。
+                <span className="font-mono">Gist ID</span> 首次留空，在导入页点“上传到云端”会自动创建一个私有 Gist；创建后系统会自动填入 Gist ID。
               </li>
               <li>
-                换设备时，在新设备粘贴同一个 token 和 Gist ID，点“从云端下载”即可用云端数据覆盖本地。
+                换设备时，在新设备粘贴同一个 token 和 Gist ID，在设置页点“从云端下载”即可用云端数据覆盖本地。
               </li>
             </ol>
             <p className="mt-2 text-slate-500">
@@ -339,13 +306,6 @@ export default function Settings() {
         <p className="text-xs text-slate-500">输入后会自动保存到本地，无需再次输入</p>
         <div className="flex flex-wrap gap-2">
           <button
-            className="rounded bg-sky-600 px-3 py-2 text-white disabled:opacity-40"
-            onClick={() => void uploadToCloud()}
-            disabled={busy}
-          >
-            {busy ? '处理中...' : '上传到云端（覆盖云端）'}
-          </button>
-          <button
             className="rounded bg-emerald-600 px-3 py-2 text-white disabled:opacity-40"
             onClick={() => void downloadFromCloud()}
             disabled={busy}
@@ -353,7 +313,9 @@ export default function Settings() {
             {busy ? '处理中...' : '从云端下载（覆盖本地）'}
           </button>
         </div>
-        <p className="text-xs text-slate-500">上传会用本地数据完全覆盖云端；下载会用云端数据完全覆盖本地。</p>
+        <p className="text-xs text-slate-500">
+          从云端下载会用云端数据完全覆盖本地。上传到云端请在导入页操作。
+        </p>
       </section>
 
       <section className="space-y-2">
