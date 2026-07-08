@@ -28,10 +28,10 @@ describe('Import page', () => {
     await putWord({ ...newWord({ w: 'apple', cn: '旧苹果' }, 0), streak: 2 })
 
     render(<Import />)
-    await user.type(screen.getByPlaceholderText('粘贴豆包返回的内容'), TEXT)
+    await user.type(screen.getByRole('textbox', { name: '导入文本' }), TEXT)
     await user.click(screen.getByRole('button', { name: '解析并导入' }))
 
-    expect(await screen.findByText('新增 1，覆盖 1')).toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent('新增 1，覆盖 1')
     expect(screen.getByRole('button', { name: '回滚最近一次导入' })).toBeInTheDocument()
   })
 })

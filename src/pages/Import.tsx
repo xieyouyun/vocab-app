@@ -70,6 +70,7 @@ export default function Import() {
         value={text}
         onChange={(event) => setText(event.target.value)}
         rows={10}
+        aria-label="导入文本"
         placeholder="粘贴豆包返回的内容"
         className="w-full rounded border p-2 font-mono text-sm"
       />
@@ -93,7 +94,11 @@ export default function Import() {
           </button>
         )}
       </div>
-      {result && <p className="text-sm text-slate-600">{result}</p>}
+      {result && (
+        <p role="status" className="text-sm text-slate-600">
+          {result}
+        </p>
+      )}
     </main>
   )
 }
