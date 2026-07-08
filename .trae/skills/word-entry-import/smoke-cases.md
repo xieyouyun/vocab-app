@@ -1,6 +1,6 @@
 # Smoke Cases
 
-## Case 1: Single word generation waits for explicit confirmation
+## Case 1: Single word generation creates pending blocks only
 
 Input:
 
@@ -9,9 +9,11 @@ Input:
 Expected:
 
 - The skill runs because the message starts with `单词：`.
-- Exactly one import-ready block is generated.
+- Exactly one import-ready block is generated in a dedicated fenced `text` block.
+- The fenced block contains only parser-compatible entry lines, with no commentary mixed into it.
 - No import happens yet.
-- The workflow waits for the exact phrase `确认导入`.
+- Any explanation about next steps stays outside the fenced block.
+- The workflow waits for a later exact message `确认导入`.
 
 ## Case 2: Multi-word request uses supported separators
 
@@ -22,9 +24,10 @@ Input:
 Expected:
 
 - Three words are parsed.
-- Three import-ready blocks are generated.
+- Three import-ready blocks are generated in one dedicated fenced `text` block.
 - Blocks are separated by exactly one blank line.
-- The workflow still waits for `确认导入` before importing.
+- No bullets, warnings, or prose appear between entry blocks.
+- The workflow still waits for a later exact `确认导入` message before importing.
 
 ## Case 3: Too many words are rejected
 
@@ -39,7 +42,32 @@ Expected:
 - No browser automation runs.
 - The response explains that the batch limit is 10 words and asks the user to split the request.
 
-## Case 4: Ambiguous confirmation does not import
+## Case 4: Exact second-stage confirmation imports pending blocks
+
+Input sequence:
+
+1. `单词：abandon`
+2. `确认导入`
+
+Expected:
+
+- Step 1 generates a pending import-ready block.
+- Step 2 triggers import only because it is a later standalone exact `确认导入` message.
+- The import uses the already-generated pending block content from step 1 rather than regenerating a new block.
+
+## Case 5: `确认导入` without pending blocks does not import
+
+Input:
+
+`确认导入`
+
+Expected:
+
+- The skill does not import.
+- The response explains there are no pending approved blocks in context.
+- The response tells the user to start with `单词：...` first.
+
+## Case 6: Ambiguous confirmation does not import
 
 Input sequence:
 
@@ -52,7 +80,7 @@ Expected:
 - The skill does not import after step 2.
 - The skill asks for the exact phrase `确认导入`.
 
-## Case 5: Incomplete dictionary result is withheld from import
+## Case 7: Incomplete dictionary result is withheld from import-ready content
 
 Input:
 
@@ -61,10 +89,11 @@ Input:
 Expected:
 
 - If required fields cannot be completed, the word is listed as incomplete.
-- The incomplete word is not included in the import-ready block output.
+- The incomplete word is not included in the import-ready block content.
+- The explanation about the incomplete word stays outside the fenced import-ready block.
 - The skill does not import that word.
 
-## Case 6: Import automation failure preserves generated text
+## Case 8: Import automation failure preserves generated text and keeps failure notes separate
 
 Input sequence:
 
@@ -76,8 +105,9 @@ Expected:
 - Generation completes before import starts.
 - If opening `/import`, filling `导入文本`, clicking `解析并导入`, or reading the `status` result fails, the generated text remains available.
 - The user is told that generation succeeded but automatic import failed.
+- The failure note stays outside the parser-compatible import-ready block content.
 
-## Case 7: Wrong origin risk is called out
+## Case 9: Wrong origin risk is called out
 
 Situation:
 

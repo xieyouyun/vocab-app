@@ -1,13 +1,16 @@
 ---
 name: "word-entry-import"
-description: "Generates import-ready word entry blocks from dictionary facts plus AI-completed Chinese helper fields, then imports them through the app's /import page only after the user sends the exact confirmation phrase `确认导入`. Invoke when the user message starts with `单词：`."
+description: "Handles a two-stage vocab import workflow: generate import-ready word entry blocks when the user message starts with `单词：`, then import those already-reviewed blocks through the app's /import page only when a later user message is exactly `确认导入`."
 ---
 
 # Word Entry Import
 
 ## Purpose
 
-Use this skill when the user wants to generate import-ready word blocks for the vocab app by sending a message that starts with `单词：`.
+Use this skill for a narrow, two-stage vocab import workflow:
+
+1. Generation stage: the user sends a message that starts with `单词：`.
+2. Import stage: after review, the user later sends the exact confirmation message `确认导入`.
 
 This skill has a narrow scope:
 
@@ -20,9 +23,12 @@ This skill has a narrow scope:
 
 Do not expand this workflow into direct database writes, full-library restore, or any app-side feature work.
 
-## Trigger
+## Invocation Rules
 
-Only run this workflow when the user input starts with the exact trigger `单词：`.
+Stage 1: generation
+
+- Start the generation workflow only when the user input starts with the exact trigger `单词：`.
+- Parse words, generate reviewable output, and stop before import.
 
 Examples:
 
@@ -32,7 +38,15 @@ Examples:
   `abandon`
   `ability`
 
-If the message does not start with `单词：`, do not run this skill.
+Stage 2: import
+
+- Run the import stage only when the user sends a later message whose entire content is exactly `确认导入`.
+- Import is allowed only if complete import-ready blocks from an earlier generation step already exist in the current conversation context and were kept pending for confirmation.
+- `确认导入` must be a standalone exact confirmation message. Do not treat longer messages such as `请确认导入`, `确认导入一下`, or any other variant as the exact trigger.
+- Do not import on ambiguous confirmations such as `可以`, `继续`, `没问题`, `好`, or similar variants.
+- If the user sends `确认导入` but there are no pending approved import-ready blocks in context, do not import. Tell the user there is nothing pending to import and ask them to regenerate first.
+
+Outside these two cases, do not run this skill.
 
 ## Input Rules
 
@@ -62,7 +76,9 @@ Do not let AI overwrite dictionary-owned fields.
 
 ## Output Format
 
-The generated output must be import-ready text that matches the existing parser format exactly.
+### Import-Ready Block Content
+
+Whenever this skill presents import-ready content, that content must match the existing parser format exactly.
 
 Return only blocks in this shape, with one blank line between words:
 
@@ -81,19 +97,31 @@ Return only blocks in this shape, with one blank line between words:
 Rules:
 
 1. Keep the field names exactly as shown above.
-2. Do not add commentary before or after the import-ready blocks.
+2. Keep the import-ready content parser-compatible with `src/lib/parser.ts`.
 3. Separate multiple entries with exactly one blank line.
-4. The final generated text must stay compatible with `src/lib/parser.ts`.
+4. Do not insert explanations, warnings, headings, bullets, or any other extra text inside the import-ready content.
+
+### Explanatory Text
+
+Review notes, incomplete-word explanations, waiting-for-confirmation instructions, and automation failure messages are allowed, but they must stay outside the import-ready block content.
+
+Make the separation explicit:
+
+1. If import-ready content is included in a response, place it in one dedicated fenced `text` block that contains only parser-compatible entries.
+2. Put any explanatory text before or after that fenced block, never between field lines or between entry blocks.
+3. Incomplete words, rejection reasons, and follow-up instructions must be written as normal prose or bullets outside the fenced block.
+4. On automation failure after generation, keep the previously generated import-ready content unchanged and keep failure notes outside that content.
 
 ## Review Gate
 
 1. Generate the blocks first and present them for review.
 2. If any word is missing required import fields, treat it as incomplete.
-3. Do not include incomplete words inside the import-ready block output.
-4. Clearly list incomplete words separately and explain that they were withheld from import.
-5. Wait for the exact confirmation phrase `确认导入`.
-6. Do not import on ambiguous confirmations such as `可以`, `继续`, `没问题`, `好`, or similar variants.
-7. If the user sends anything other than `确认导入`, keep the generated text available and continue waiting for explicit confirmation or revision.
+3. Do not include incomplete words inside the import-ready block content.
+4. Clearly list incomplete words separately outside the import-ready block content and explain that they were withheld from import.
+5. If at least one complete entry remains, tell the user to send the later exact confirmation message `确认导入` to start import.
+6. Wait for that later exact confirmation phrase `确认导入`.
+7. Do not import on ambiguous confirmations such as `可以`, `继续`, `没问题`, `好`, or similar variants.
+8. If the user sends anything other than `确认导入`, keep the generated text available and continue waiting for explicit confirmation or revision.
 
 ## Import Action
 
