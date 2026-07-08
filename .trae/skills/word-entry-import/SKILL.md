@@ -97,9 +97,10 @@ Return only blocks in this shape, with one blank line between words:
 Rules:
 
 1. Keep the field names exactly as shown above.
-2. Keep the import-ready content parser-compatible with `src/lib/parser.ts`.
-3. Separate multiple entries with exactly one blank line.
-4. Do not insert explanations, warnings, headings, bullets, or any other extra text inside the import-ready content.
+2. **Each field must appear on its own line.** Do not wrap multiple fields on a single line.
+3. Keep the import-ready content parser-compatible with `src/lib/parser.ts`.
+4. Separate multiple entries with exactly one blank line.
+5. Do not insert explanations, warnings, headings, bullets, or any other extra text inside the import-ready content.
 
 ### Explanatory Text
 
