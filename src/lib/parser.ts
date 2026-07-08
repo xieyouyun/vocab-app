@@ -40,6 +40,13 @@ const REQUIRED_FIELDS: ParsedEntryKey[] = [
 
 const LINE_RE = /【([^】]+)】[:：]\s*(.+)/
 
+export function splitEntryBlocks(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+}
+
 /** 将 "/uk//us/" 格式的音标拆分为 "英 /uk/ 美 /us/" */
 export function formatPhonetic(p?: string): string | undefined {
   if (!p) return undefined
@@ -49,14 +56,9 @@ export function formatPhonetic(p?: string): string | undefined {
 }
 
 export function parseEntries(text: string): ParsedEntry[] {
-  const blocks = text
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-
   const entries: ParsedEntry[] = []
 
-  for (const block of blocks) {
+  for (const block of splitEntryBlocks(text)) {
     const entry: ParsedEntry = { w: '', missing: [] }
 
     for (const line of block.split('\n')) {
