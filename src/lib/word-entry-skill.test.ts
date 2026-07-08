@@ -50,6 +50,19 @@ pear apple, banana`),
       error: `单次最多导入 ${WORD_ENTRY_MAX_BATCH} 个单词`,
     })
   })
+
+  it('rejects requests whose raw submitted token count exceeds the batch limit even if dedupe would shrink them', () => {
+    expect(
+      parseWordEntryRequest(
+        `单词：${Array.from({ length: WORD_ENTRY_MAX_BATCH + 1 }, (_, index) =>
+          index % 2 === 0 ? 'apple' : 'banana'
+        ).join(', ')}`,
+      ),
+    ).toEqual({
+      words: [],
+      error: `单次最多导入 ${WORD_ENTRY_MAX_BATCH} 个单词`,
+    })
+  })
 })
 
 describe('findIncompleteImportWords', () => {

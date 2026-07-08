@@ -25,6 +25,13 @@ export function parseWordEntryRequest(input: string): { words: string[]; error?:
     }
   }
 
+  if (rawWords.length > WORD_ENTRY_MAX_BATCH) {
+    return {
+      words: [],
+      error: `单次最多导入 ${WORD_ENTRY_MAX_BATCH} 个单词`,
+    }
+  }
+
   const words: string[] = []
   const seen = new Set<string>()
 
@@ -32,13 +39,6 @@ export function parseWordEntryRequest(input: string): { words: string[]; error?:
     if (seen.has(word)) continue
     seen.add(word)
     words.push(word)
-  }
-
-  if (words.length > WORD_ENTRY_MAX_BATCH) {
-    return {
-      words: [],
-      error: `单次最多导入 ${WORD_ENTRY_MAX_BATCH} 个单词`,
-    }
   }
 
   return { words }
